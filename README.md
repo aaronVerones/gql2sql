@@ -29,7 +29,7 @@ stack test
 
 ## Notes for Developers:
 
-- The Hasura GraphQL parser is in the `vendor` directory. There's no documentation for it, so you'll have to figure out how it works by looking at the code
+- The Hasura GraphQL parser is in the `vendor` directory. There's no documentation for it, so you'll have to figure out how it works by looking at the code, specifically the `vendor/graphql-parser-hs/src/Language/GraphQL/Draft/Syntax.hs` file
 - The entrypoint for the app is `app/Main.hs`
 - Tests are in `test/Spec.hs`
 - The schema the program parses is `./schema.graphql`
@@ -37,4 +37,5 @@ stack test
 # TODO
 
 1. Modify `schema.graphql` so that it's more interesting
-2. Write a function to 
+2. Complete the function `Main.hs: ast2sql`
+3. Complete the function `Main.hs: ast2dot`

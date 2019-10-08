@@ -1,41 +1,26 @@
-type Tweet {
-    id: ID!
-    # The tweet text. No more than 140 characters!
-    body: String
-    # When the tweet was published
-    date: Date
-    # Who published the tweet
-    Author: User
-    # Views, retweets, likes, etc
-    Stats: Stat
+type Author {
+    id: Int!                    # mandatory field
+    name: String                # optional field
+    books: [Book]               # Many-to-One relation
+    address: Address            # One-to-One relation (fkey side)
 }
 
-type User {
-    id: ID!
-    username: String
-    first_name: String
-    last_name: String
-    full_name: String
-    name: String @deprecated
-    avatar_url: Url
+type Book {
+    id: Int!
+    title: String
+    author: Author              # Many-to-One relation (fkey side)
+    votes: Int
+    categories: [Category]      # Many-to-Many relation
 }
 
-type Stat {
-    views: Int
-    likes: Int
-    retweets: Int
-    responses: Int
+type Category {
+    id: Int!
+    name: String
+    books: [Book]               # Many-to-Many relation
 }
 
-type Notification {
-    id: ID
-    date: Date
-    type: String
+type Address {
+    id: Int!
+    street: String
+    city: String
 }
-
-type Meta {
-    count: Int
-}
-
-scalar Url
-scalar Date
