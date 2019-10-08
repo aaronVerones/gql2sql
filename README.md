@@ -32,4 +32,9 @@ stack test
 - The Hasura GraphQL parser is in the `vendor` directory. There's no documentation for it, so you'll have to figure out how it works by looking at the code
 - The entrypoint for the app is `app/Main.hs`
 - Tests are in `test/Spec.hs`
+- The schema the program parses is `./schema.graphql`
 
+# TODO
+
+1. Modify `schema.graphql` so that it's more interesting
+2. Write a function to 
