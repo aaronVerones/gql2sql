@@ -33,6 +33,7 @@ stack test
 - The entrypoint for the app is `app/Main.hs`
 - Tests are in `test/Spec.hs`
 - The schema the program parses is `./schema.graphql`
+- [Dope GQL stuff](https://raw.githubusercontent.com/sogko/graphql-shorthand-notation-cheat-sheet/master/graphql-shorthand-notation-cheat-sheet.png)
 
 # TODO
 
