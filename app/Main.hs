@@ -31,7 +31,7 @@ codegen filePath ast = do
 ast2sql :: AST.SchemaDocument -> [Char]
 ast2sql schema = "\
   \CREATE DATABASE IF NOT EXISTS TestDB;\n\
-  \USE TestDB;\n\
+  \USE TestDB;\n\n\
 \" ++ (sqlVisit schema)
 
 
