@@ -1,0 +1,11 @@
+digraph G {
+  FirstEntity[shape="square"]
+  firstID[label=< <u>firstID</u> >]
+  FirstEntity -> firstID
+
+  SecondEntity[shape="square"]
+  secondID[label=< <u>secondID</u> >]
+  SecondEntity -> secondID
+
+  FirstEntity -> SecondEntity [dir="both"]
+}

@@ -1,0 +1,49 @@
+type Author {
+  id: Author_ID!
+  name: String
+  books: [Book]
+  address: Address
+}
+
+type Author_ID {
+  x: Int!
+  y: Int!
+}
+
+type Book {
+  id: Int!
+  title: String
+  author: Author
+  votes: Int
+  categories: [Category]
+}
+
+type Category {
+  id: Int!
+  name(default: String = "foo"): String
+  books: [Book]
+}
+
+type Address {
+  id: Int!
+  street: String
+  city: String
+  author: Author
+}
+
+type Mother {
+  id: Int!
+  foo: String!
+}
+
+type Father {
+  id: Int!
+  bar: String!
+}
+
+union Parent = Mother | Father
+
+type Person {
+  id: Int!
+  parent: Parent!
+}

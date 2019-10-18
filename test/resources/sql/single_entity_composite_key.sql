@@ -1,0 +1,10 @@
+CREATE DATABASE IF NOT EXISTS TestDB;
+USE TestDB;
+
+CREATE TABLE MyEntity(
+  first INTEGER NOT NULL,
+  second VARCHAR(255) NOT NULL,
+  field1 VARCHAR(255),
+  field2 INTEGER,
+  PRIMARY KEY(first, second)
+);

@@ -17,7 +17,7 @@ stack build
 
 run:
 ```bash
-stack build && stack exec gql2sql-exe
+stack build && stack exec gql2sql-exe <Path to .graphql file>
 ```
 
 test: (also runs `graphql-parser` tests)
@@ -32,11 +32,10 @@ stack test
 - The Hasura GraphQL parser is in the `vendor` directory. There's no documentation for it, so you'll have to figure out how it works by looking at the code, specifically the `vendor/graphql-parser-hs/src/Language/GraphQL/Draft/Syntax.hs` file
 - The entrypoint for the app is `app/Main.hs`
 - Tests are in `test/Spec.hs`
-- The schema the program parses is `./schema.graphql`
+- The schema the program parses is given in the first argument to the gql2sql-exe program.
+- Example schemas can be found in test/resources/gql
 - [Dope GQL stuff](https://raw.githubusercontent.com/sogko/graphql-shorthand-notation-cheat-sheet/master/graphql-shorthand-notation-cheat-sheet.png)
 
 # TODO
-
-1. Modify `schema.graphql` so that it's more interesting
-2. Complete the function `Main.hs: ast2sql`
-3. Complete the function `Main.hs: ast2dot`
+1. Complete the function `Main.hs: ast2sql`
+2. Complete the function `Main.hs: ast2dot`

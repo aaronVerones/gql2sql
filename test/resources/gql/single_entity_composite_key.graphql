@@ -1,0 +1,10 @@
+type MyEntity {
+  id: MyEntity_ID!
+  field1: String
+  field2: Integer
+}
+
+type MyEntity_ID {
+  first: Integer!
+  second: String!
+}

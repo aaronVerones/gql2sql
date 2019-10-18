@@ -1,0 +1,14 @@
+CREATE DATABASE IF NOT EXISTS TestDB;
+USE TestDB;
+
+CREATE TABLE OneEntity(
+  id INTEGER PRIMARY KEY,
+  someField VARCHAR(255)
+);
+
+CREATE TABLE ManyEntity(
+  id INTEGER PRIMARY KEY,
+  oneConnection INTEGER
+);
+
+ALTER TABLE ManyEntity ADD FOREIGN KEY (id) REFERENCES OneEntity(id);

@@ -1,0 +1,9 @@
+digraph G {
+  MyEntity[shape="square"]
+  first[label=< <u>first</u> >]
+  second[label=< <u>second</u> >]
+  MyEntity -> first
+  MyEntity -> second
+  MyEntity -> field1
+  MyEntity -> field2
+}

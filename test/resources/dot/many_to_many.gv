@@ -1,0 +1,15 @@
+digraph G {
+  Student[shape="square"]
+  Course[shape="square"]
+
+  studentID[label=< <u>studentID</u> >]
+  deptName[label=< <u>deptName</u> >]
+  courseNumber[label=< <u>courseNumber</u> >]
+
+  Student -> studentID
+
+  Course -> deptName
+  Course -> courseNumber
+
+  Student -> Course [dir="both"]
+}

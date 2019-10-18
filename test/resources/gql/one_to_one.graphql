@@ -1,0 +1,9 @@
+type FirstEntity {
+  firstID: Int!
+  firstsOtherEntity: SecondEntity
+}
+
+type SecondEntity {
+  secondID: Int!
+  secondsOtherEntity: FirstEntity
+}

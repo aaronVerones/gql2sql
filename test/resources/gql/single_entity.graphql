@@ -1,0 +1,5 @@
+type MyEntity {
+  id: Int!
+  name: String
+  isActive: Boolean
+}

@@ -1,0 +1,9 @@
+type OneEntity {
+  id: Int!
+  someField: String
+}
+
+type ManyEntity {
+  id: Int!
+  oneConnection: OneEntity
+}

@@ -1,0 +1,14 @@
+type Student {
+  studentID: Int!
+  coursesTaken: [Course]
+}
+
+type Course {
+  courseID: Course_ID!
+  enrolledStudents: [Student]
+}
+
+type Course_ID {
+  deptName: String!
+  courseNumber: Int!
+}
