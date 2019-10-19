@@ -4,22 +4,24 @@ USE TestDB;
 CREATE TABLE Author(
   x INTEGER NOT NULL,
   y INTEGER NOT NULL,
-  name VARCHAR(255),
+  name VARCHAR,
   address INTEGER,
   PRIMARY KEY (x, y)
 );
 
 CREATE TABLE Book(
-  id INTEGER PRIMARY KEY,
+  id INTEGER NOT NULL,
   title VARCHAR(255),
   author_x INTEGER,
   author_y INTEGER,
-  votes INTEGER
+  votes INTEGER,
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE Category(
-  id INTEGER PRIMARY KEY,
-  name VARCHAR(255) DEFAULT 'foo'
+  id INTEGER NOT NULL,
+  name VARCHAR DEFAULT 'foo',
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE Book_and_Category(
@@ -29,27 +31,31 @@ CREATE TABLE Book_and_Category(
 );
 
 CREATE TABLE Address(
-  id INTEGER PRIMARY KEY,
-  street VARCHAR(255),
-  city VARCHAR(255),
+  id INTEGER NOT NULL,
+  street VARCHAR,
+  city VARCHAR,
   author_x INTEGER,
-  author_y INTEGER
+  author_y INTEGER,
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE Mother(
-  id INTEGER PRIMARY KEY,
-  foo VARCHAR(255) NOT NULL
+  id INTEGER,
+  foo VARCHAR NOT NULL,
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE Father(
-  id INTEGER PRIMARY KEY,
-  bar VARCHAR(255) NOT NULL
+  id INTEGER NOT NULL,
+  bar VARCHAR NOT NULL,
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE Person(
-  id INTEGER PRIMARY KEY,
+  id INTEGER NOT NULL,
   mother_id INTEGER,
   father_id INTEGER,
+  PRIMARY KEY (id),
   CHECK (((mother_id) IS NOT NULL) OR ((father_id) IS NOT NULL))
 );
 

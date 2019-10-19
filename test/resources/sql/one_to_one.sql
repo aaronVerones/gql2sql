@@ -2,13 +2,15 @@ CREATE DATABASE IF NOT EXISTS TestDB;
 USE TestDB;
 
 CREATE TABLE FirstEntity(
-  firstID INTEGER PRIMARY KEY,
-  firstsOtherEntity INTEGER
+  firstID INTEGER NOT NULL,
+  firstsOtherEntity INTEGER,
+  PRIMARY KEY (firstID)
 );
 
 CREATE TABLE SecondEntity(
-  secondID INTEGER PRIMARY KEY,
-  secondsOtherEntity INTEGER
+  secondID INTEGER NOT NULL,
+  secondsOtherEntity INTEGER,
+  PRIMARY KEY (secondID)
 );
 
 ALTER TABLE FirstEntity ADD FOREIGN KEY (firstsOtherEntity) REFERENCES SecondEntity(secondID);

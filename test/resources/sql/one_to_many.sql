@@ -2,13 +2,15 @@ CREATE DATABASE IF NOT EXISTS TestDB;
 USE TestDB;
 
 CREATE TABLE OneEntity(
-  id INTEGER PRIMARY KEY,
-  someField VARCHAR(255)
+  id INTEGER NOT NULL,
+  someField VARCHAR,
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE ManyEntity(
-  id INTEGER PRIMARY KEY,
-  oneConnection INTEGER
+  id INTEGER NOT NULL,
+  oneConnection INTEGER,
+  PRIMARY KEY (id)
 );
 
 ALTER TABLE ManyEntity ADD FOREIGN KEY (id) REFERENCES OneEntity(id);

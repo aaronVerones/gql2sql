@@ -8,6 +8,8 @@ import qualified Language.GraphQL.Draft.Syntax as AST
 import Data.Text
 
 import SQLVisitor
+import GQLSymbolTable
+import SymbolTable (SymbolTable)
 
 -- Reads a file path from the command line and outputs sql/dot files.
 main :: IO ()
@@ -24,20 +26,21 @@ main = do
 -- Generates the sql and dot output files from the gql ast.
 codegen :: [Char] -> AST.SchemaDocument -> IO()
 codegen filePath ast = do
-  writeFile (getOutputPath filePath "sql") (ast2sql ast)
-  writeFile (getOutputPath filePath "gv") (ast2dot ast)
+  let symbolTable = constructTable ast
+  writeFile (getOutputPath filePath "sql") (ast2sql ast symbolTable)
+  writeFile (getOutputPath filePath "gv") (ast2dot ast symbolTable)
 
--- TODO
-ast2sql :: AST.SchemaDocument -> [Char]
-ast2sql schema = "\
+-- TODO: Implement
+ast2sql :: AST.SchemaDocument -> SymbolTable AST.TypeDefinition -> [Char]
+ast2sql schema symbolTable = "\
   \CREATE DATABASE IF NOT EXISTS TestDB;\n\
-  \USE TestDB;\n\n\
-\" ++ (sqlVisit schema)
+  \USE TestDB;\n\
+\" ++ (sqlVisit schema symbolTable)
 
 
--- TODO
-ast2dot :: AST.SchemaDocument -> [Char]
-ast2dot schema = "graph graphname {\
+-- TODO: Implement
+ast2dot :: AST.SchemaDocument -> SymbolTable AST.TypeDefinition -> [Char]
+ast2dot schema symbolTable = "graph graphname {\
   \a -- b -- c;\
   \b -- d;\
 \}"

@@ -1,10 +1,10 @@
 type MyEntity {
   id: MyEntity_ID!
   field1: String
-  field2: Integer
+  field2: Int
 }
 
 type MyEntity_ID {
-  first: Integer!
+  first: Int!
   second: String!
 }
