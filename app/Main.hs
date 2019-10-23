@@ -14,12 +14,13 @@ import SymbolTable (SymbolTable)
 -- Reads a file path from the command line and outputs sql/dot files.
 main :: IO ()
 main = do
+  -- TODO: Error handle when input file is not given
   args <- getArgs
   let inputFile = Prelude.head args
   schemaFile <- readFile inputFile
   let schema = parseSchemaDoc (fromString schemaFile)
   either
-    (print) -- TODO: Error Handling.
+    (print) -- TODO: Error handling invalid AST.
     (codegen inputFile)
     schema
 

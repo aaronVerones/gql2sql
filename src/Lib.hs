@@ -1,4 +1,4 @@
-module Lib ( getOutputPath, toS, toLowerCase, startsWith, endsWith ) where
+module Lib where
     import Language.GraphQL.Draft.Syntax
     import Data.Char (toLower)
     import Data.Text (pack, unpack)
@@ -15,6 +15,11 @@ module Lib ( getOutputPath, toS, toLowerCase, startsWith, endsWith ) where
     -- Gets the output path to the input file name, adding the given extension.
     getOutputPath :: [Char] -> [Char] -> [Char]
     getOutputPath inputPath extension = "output/" ++ (removeFileExtension $ fileNameFromPath inputPath) ++ ('.':extension)
+
+    -- Returns true if the input is equal to any in the list.
+    anyEq :: Eq e => e -> [e] -> Bool
+    anyEq e [] = False
+    anyEq e (h:t) = (h == e) || anyEq e t
 
     -- Converts a name to a string
     toS :: Name -> [Char]
