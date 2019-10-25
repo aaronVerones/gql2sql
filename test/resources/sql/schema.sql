@@ -10,26 +10,26 @@ CREATE TABLE Author(
 );
 
 CREATE TABLE Book(
-  id INTEGER NOT NULL,
+  book_id INTEGER NOT NULL,
   title VARCHAR,
-  author_x INTEGER,
-  author_y INTEGER,
+  x INTEGER,
+  y INTEGER,
   votes INTEGER,
-  PRIMARY KEY (id)
+  PRIMARY KEY (book_id)
 );
 
 CREATE TABLE Category(
-  id INTEGER NOT NULL,
+  category_id INTEGER NOT NULL,
   name VARCHAR DEFAULT 'foo',
-  PRIMARY KEY (id)
+  PRIMARY KEY (category_id)
 );
 
 CREATE TABLE Address(
   id INTEGER NOT NULL,
   street VARCHAR,
   city VARCHAR,
-  author_x INTEGER,
-  author_y INTEGER,
+  x INTEGER,
+  y INTEGER,
   PRIMARY KEY (id)
 );
 
@@ -42,5 +42,5 @@ CREATE TABLE Book_and_Category(
 );
 
 ALTER TABLE Author ADD FOREIGN KEY (address) REFERENCES Address(id);
-ALTER TABLE Book ADD FOREIGN KEY (author_x, author_y) REFERENCES Author(x, y);
-ALTER TABLE Address ADD FOREIGN KEY (author_x, author_y) REFERENCES Author(x, y);
+ALTER TABLE Book ADD FOREIGN KEY (x, y) REFERENCES Author(x, y);
+ALTER TABLE Address ADD FOREIGN KEY (x, y) REFERENCES Author(x, y);

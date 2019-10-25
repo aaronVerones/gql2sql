@@ -44,6 +44,11 @@ module Lib where
     startsWith "" postfix = False
     startsWith (h1:t1) (h2:t2) = (h1 == h2) && (startsWith t1 t2)
 
+    -- Returns true if the char is contained in the first string
+    contains :: [Char] -> Char -> Bool
+    contains "" char = False
+    contains (h:t) char = char == h || contains t char
+
     -- True if the string ends with the given input
     endsWith :: [Char] -> [Char] -> Bool
     endsWith str postfix = startsWith (reverse str) (reverse postfix)

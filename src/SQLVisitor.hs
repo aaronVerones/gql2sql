@@ -50,10 +50,12 @@ module SQLVisitor (sqlVisit) where
   visitFieldDefinition :: FieldDefinition -> Visitor
   visitFieldDefinition (FieldDefinition _ name args (TypeNamed nullability (NamedType typeName)) _) table
     | (isComposite typeName) = (visitType fieldType table) ++ (visitAll (visitArgument) args table)
-    | otherwise = "\n\t" ++ (toS name) ++ " " ++ (visitType fieldType table) ++ (visitAll (visitArgument) args table) ++ ","
+    | otherwise = printName ++ visitedTypes ++ comma
     where
       fieldType = (TypeNamed nullability (NamedType typeName))
-      strName = (toS typeName)
+      visitedTypes = (visitType fieldType table) ++ (visitAll (visitArgument) args table)
+      printName = if (contains visitedTypes '\n') then "" else "\n\t" ++ (toS name) ++ " "
+      comma = if (endsWith visitedTypes ",") then "" else ","
   visitFieldDefinition _ _ = skip
 
   -- Converts a GQL type to a SQL type
@@ -122,7 +124,7 @@ module SQLVisitor (sqlVisit) where
     | (isPrimitive (toS typeName)) = Just (toS name)
     | otherwise = case (findElement table (toS typeName)) of
         Nothing -> Nothing
-        (Just typeDef) -> Just (getFieldNames typeDef)
+        (Just typeDef) -> Just (getFieldNames typeDef table)
   getPrimaryKey _ _ = Nothing
 
   -- Creates a Foreign Key for the Type Defintion
@@ -240,17 +242,19 @@ module SQLVisitor (sqlVisit) where
   getRelationColumns (TypeList nullability listType) table = skip
 
   -- Gets the names of all fields declared in a type declaration comma separated.
-  getFieldNames :: TypeDefinition -> [Char]
-  getFieldNames (TypeDefinitionObject (ObjectTypeDefinition _ name _ _ fields))
+  getFieldNames :: TypeDefinition -> Visitor
+  getFieldNames (TypeDefinitionObject (ObjectTypeDefinition _ name _ _ fields)) table
     | (isComposite name) = foldr (\ (FieldDefinition _ fName _ _ _) acc -> (toS fName) ++ (if (acc == []) then "" else ", ") ++ acc) [] fields
     | (isPrimitive (toS typeName)) = (toS firstName)
-    | otherwise = skip
+    | otherwise = case (findElement table (toS typeName)) of
+      Nothing -> skip
+      (Just typeDef) -> getFieldNames typeDef table
     where
       (FieldDefinition _ firstName _ firstType _) = (head fields)
       typeName = case (firstType) of
         (TypeNamed _ (NamedType tName)) -> tName
         (TypeList _ _) -> (toName skip)
-  getFieldNames _ = skip
+  getFieldNames _ _ = skip
 
   -- Converts a GQL primitive to a SQL primitive
   primitiveToS :: [Char] -> [Char]
