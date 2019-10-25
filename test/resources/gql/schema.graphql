@@ -11,7 +11,7 @@ type Author_ID {
 }
 
 type Book {
-  id: Int!
+  book_id: Int!
   title: String
   author: Author
   votes: Int
@@ -19,7 +19,7 @@ type Book {
 }
 
 type Category {
-  id: Int!
+  category_id: Int!
   name(default: String = "foo"): String
   books: [Book]
 }
@@ -29,21 +29,4 @@ type Address {
   street: String
   city: String
   author: Author
-}
-
-type Mother {
-  id: Int!
-  foo: String!
-}
-
-type Father {
-  id: Int!
-  bar: String!
-}
-
-union Parent = Mother | Father
-
-type Person {
-  id: Int!
-  parent: Parent!
 }

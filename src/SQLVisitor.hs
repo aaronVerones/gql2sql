@@ -178,29 +178,42 @@ module SQLVisitor (sqlVisit) where
           combinedName = (toS name) ++ "_and_" ++ (toS otherName)
           primaryKeys (FieldDefinition _ fieldName _ fieldType _) =
             if (isPrimitive (typeToS fieldType))
-            then "\t" ++ (toS fieldName) ++ " "  ++ (primitiveToS $ typeToS fieldType) ++ " NOT NULL,\n"
+            then [((toS fieldName), (primitiveToS $ typeToS fieldType), (toS name))]
             else case (findElement table (typeToS fieldType)) of
-              Nothing -> skip
-              (Just (TypeDefinitionObject (ObjectTypeDefinition _ _ _ _ compFields))) ->
-                foldl
-                  (\ acc (FieldDefinition _ fName _ fType _) ->
-                    acc ++ "\t" ++ (toS fName) ++ " " ++ (primitiveToS $ typeToS fType) ++ " NOT NULL,\n" )
-                  ""
-                  compFields
-              otherwise -> skip
-          primaryKeyList b c = skip
+              Nothing -> []
+              (Just (TypeDefinitionObject (ObjectTypeDefinition _ tableName _ _ compFields))) ->
+                (foldr
+                  (\ (FieldDefinition _ fName _ fType _) acc ->
+                    ((toS fName), (primitiveToS $ typeToS fType), (toS otherName)):acc )
+                  []
+                  compFields)
+              otherwise -> []
+          primaryKeysCombined = (primaryKeys (head fields)) ++ (primaryKeys (head otherFields))
+          combineForeignKeys [] = []
+          combineForeignKeys (h:[]) = [h]
+          combineForeignKeys ((k1Name, k1Type, k1Table) : ((k2Name, k2Type, k2Table) : t)) =
+            if (k1Table == k2Table)
+              then (k1Name ++ ", " ++ k2Name, k1Type, k1Table):(combineForeignKeys t)
+              else (k1Name, k1Type, k1Table):(combineForeignKeys ((k2Name, k2Type, k2Table):t))
         in "\nCREATE TABLE " ++ combinedName ++ "(\n" ++
-           (primaryKeys (head fields)) ++
-           (primaryKeys (head otherFields)) ++
-           (primaryKeyList me other) ++ ");\n"
+           (foldr (\ (kName, kType, _) acc -> "\t" ++ kName ++ " " ++ kType ++ " NOT NULL,\n" ++ acc) "" primaryKeysCombined) ++
+           "\tPRIMARY KEY (" ++ (foldr (\ (kName, _, _) acc -> kName ++ (if (acc == []) then "" else ", ") ++ acc) ""  primaryKeysCombined) ++ "),\n" ++
+           (foldr
+            (\ (kNames, _, kTable) acc ->
+              "\tFOREIGN KEY (" ++ kNames ++ ") REFERENCES " ++ kTable ++ "(" ++ kNames ++ ")"
+              ++ (if (acc == []) then "" else ",") ++ "\n" ++ acc )
+            ""
+            (combineForeignKeys primaryKeysCombined)) ++
+           ");\n"
       -- Adds the other type to the table of already visited types.
       markAsSeen otherType alreadySeen =
         let (TypeDefinitionObject (ObjectTypeDefinition _ otName _ _ _)) = otherType
         in addElement alreadySeen (toS otName) otherType
       -- Checks each field of this type for a many-to-many relation,
       -- creating the many-to-many tables along the way.
+      addSelf (value, state) = (value, addElement state (toS name) me)
       result = if alreadySeen then (skip, seen) else
-        (foldr
+        addSelf $ (foldr
           (\ field (prevResult, prevSeen) -> let continue = (prevResult, prevSeen) in
             case (checkField field) of
               Nothing -> continue
