@@ -4,18 +4,26 @@ module SQLVisitor (sqlVisit) where
   import Lib
   import SymbolTable
 
+  type VisitTable = SymbolTable TypeDefinition
+  type Visitor = VisitTable -> [Char]
+  type MaybeVisitor = VisitTable -> Maybe [Char]
+  type StateVisitor = VisitTable -> VisitTable -> ([Char], VisitTable)
+
   -- Converts the GQL AST to a SQL String
-  sqlVisit :: SchemaDocument -> SymbolTable TypeDefinition -> [Char]
+  sqlVisit :: SchemaDocument -> Visitor
   sqlVisit ast symbolTable = visitSchemaDocument ast symbolTable
 
   -- Visits the Schema Document and converts it to SQL
-  visitSchemaDocument :: SchemaDocument -> SymbolTable TypeDefinition -> [Char]
+  visitSchemaDocument :: SchemaDocument -> Visitor
   visitSchemaDocument (SchemaDocument typeDefs) table =
     visitAll (visitTypeDefinition) typeDefs table ++
-    visitAll (createForeignKey) typeDefs table ++ "\n"
+    manyToManyTables ++
+    visitAll (createForeignKey) typeDefs table
+    where
+      (manyToManyTables, manyToManyTypes) = visitAllStateful (createManyToMany) typeDefs table Empty
 
   -- Visits the Type Definition and converts it to SQL
-  visitTypeDefinition :: TypeDefinition -> SymbolTable TypeDefinition ->  [Char]
+  visitTypeDefinition :: TypeDefinition -> Visitor
   visitTypeDefinition typeDef table = case typeDef of
     TypeDefinitionScalar scalar -> skip
     TypeDefinitionObject object -> visitObjectTypeDefinition object table
@@ -25,7 +33,7 @@ module SQLVisitor (sqlVisit) where
     TypeDefinitionInputObject inputObject -> skip
 
   -- Visits the Object Type Definition to generate SQL tables.
-  visitObjectTypeDefinition :: ObjectTypeDefinition -> SymbolTable TypeDefinition -> [Char]
+  visitObjectTypeDefinition :: ObjectTypeDefinition -> Visitor
   visitObjectTypeDefinition (ObjectTypeDefinition _ name _ _ fields) table
     | isComposite name = skip
     | (fields == []) = skip
@@ -39,7 +47,7 @@ module SQLVisitor (sqlVisit) where
         Just pk -> "\n\tPRIMARY KEY (" ++ pk ++ ")"
 
   -- Visits each field in a type declaration and generates it as a SQL column.
-  visitFieldDefinition :: FieldDefinition -> SymbolTable TypeDefinition -> [Char]
+  visitFieldDefinition :: FieldDefinition -> Visitor
   visitFieldDefinition (FieldDefinition _ name args (TypeNamed nullability (NamedType typeName)) _) table
     | (isComposite typeName) = (visitType fieldType table) ++ (visitAll (visitArgument) args table)
     | otherwise = "\n\t" ++ (toS name) ++ " " ++ (visitType fieldType table) ++ (visitAll (visitArgument) args table) ++ ","
@@ -49,7 +57,7 @@ module SQLVisitor (sqlVisit) where
   visitFieldDefinition _ _ = skip
 
   -- Converts a GQL type to a SQL type
-  visitType :: GType -> SymbolTable TypeDefinition -> [Char]
+  visitType :: GType -> Visitor
   visitType (TypeNamed nullable (NamedType name)) table = case (toS name) of
     "Int" -> "INTEGER" ++ visitNullability nullable table
     "Float" -> "REAL" ++ visitNullability nullable table
@@ -58,15 +66,13 @@ module SQLVisitor (sqlVisit) where
     -- This has performance implications.
     -- Would be better with INTEGER, but some GQL may use this for UUIDs :(
     "ID" -> "VARCHAR" ++ visitNullability nullable table
-    -- TODO: Visit GQL User-Defined Type w/ Symbol Table
     otherwise -> if (isComposite name)
       then visitCompositeKey (TypeNamed nullable (NamedType name)) table
       else getRelationColumns (TypeNamed nullable (NamedType name)) table
-  -- TODO: Visit Lists of Primitives / User-Defined Types
   visitType (TypeList (Nullability isNullable) (ListType innerType)) table = skip
 
-  -- TODO: Composite Keys
-  visitCompositeKey :: GType -> SymbolTable TypeDefinition -> [Char]
+  -- Creates a composite key based on the table association of _ID.
+  visitCompositeKey :: GType -> Visitor
   visitCompositeKey (TypeNamed nullable (NamedType name)) table = case (findElement table (toS name)) of
     Nothing -> skip
     (Just typeDef) -> case (typeDef) of
@@ -74,14 +80,14 @@ module SQLVisitor (sqlVisit) where
       otherwise -> skip
 
   -- Converts a GQL argument defintion to a SQL column property
-  visitArgument :: InputValueDefinition -> SymbolTable TypeDefinition -> [Char]
+  visitArgument :: InputValueDefinition -> Visitor
   visitArgument (InputValueDefinition _ name argType defaultValue) table = case (toS name) of
     "default" -> visitDefaultArgument defaultValue table
     -- If there is any other column properties we want to specify, do so here
     otherwise -> skip
 
   -- Visits the default argument to set a SQL column property if applicable.
-  visitDefaultArgument :: Maybe DefaultValue -> SymbolTable TypeDefinition -> [Char]
+  visitDefaultArgument :: Maybe DefaultValue -> Visitor
   visitDefaultArgument Nothing table = ""
   visitDefaultArgument (Just value) table = case value of
     VCInt num -> sqlDefault ++ (show num)
@@ -92,15 +98,26 @@ module SQLVisitor (sqlVisit) where
     otherwise -> skip
 
   -- Translates a participation constraint from GQL to SQL
-  visitNullability :: Nullability -> SymbolTable TypeDefinition -> [Char]
+  visitNullability :: Nullability -> Visitor
   visitNullability (Nullability isNullable) table = if (isNullable) then "" else " NOT NULL"
 
   -- Applies the given visitor to all elements in the list and combines their results
-  visitAll :: (e -> SymbolTable TypeDefinition -> [Char]) -> [e] -> SymbolTable TypeDefinition -> [Char]
+  visitAll :: (e -> Visitor) -> [e] -> Visitor
   visitAll visit lst table = foldr (\ e acc -> (visit e table) ++ acc) "" lst
 
+  -- Applies the given stateful visitor to all elements in the list and combines their results
+  -- Easily my favourite function in this entire module.
+  visitAllStateful :: (e -> StateVisitor) -> [e] -> StateVisitor
+  visitAllStateful visitWithState lst table seen =
+    foldl
+    (\ (prevResult, prevState) e ->
+      let (newResult, newState) = visitWithState e table prevState
+      in (prevResult ++ newResult, newState))
+    (skip, seen)
+    lst
+
   -- Gets the Primary Key from a Field Definition
-  getPrimaryKey :: FieldDefinition -> SymbolTable TypeDefinition -> Maybe [Char]
+  getPrimaryKey :: FieldDefinition -> MaybeVisitor
   getPrimaryKey (FieldDefinition _ name _ (TypeNamed _  (NamedType typeName)) _) table
     | (isPrimitive (toS typeName)) = Just (toS name)
     | otherwise = case (findElement table (toS typeName)) of
@@ -109,7 +126,7 @@ module SQLVisitor (sqlVisit) where
   getPrimaryKey _ _ = Nothing
 
   -- Creates a Foreign Key for the Type Defintion
-  createForeignKey :: TypeDefinition -> SymbolTable TypeDefinition -> [Char]
+  createForeignKey :: TypeDefinition -> Visitor
   createForeignKey (TypeDefinitionObject (ObjectTypeDefinition _ name _ _ fields)) table =
     join $ map (\ (fieldName, fieldType, fieldPK) ->
       "\nALTER TABLE " ++ (toS name) ++
@@ -132,13 +149,80 @@ module SQLVisitor (sqlVisit) where
       fName (FieldDefinition _ fName _ _ _) = (toS fName)
   createForeignKey _ _ = skip
 
+  -- Creates all many to many tables inferred by the type definition.
+  -- Easily my least favourite function in the entire module (written in a Denny's after my bedtime)
+  createManyToMany :: TypeDefinition -> StateVisitor
+  createManyToMany (TypeDefinitionObject (ObjectTypeDefinition desc name i d fields)) table seen = result
+    where
+      me = (TypeDefinitionObject (ObjectTypeDefinition desc name i d fields))
+      -- Checks if a given field has a list type for the many to many relation.
+      checkField (FieldDefinition _ fName _ fType _) = case (fType) of
+        (TypeNamed _ namedType) -> Nothing
+        (TypeList _ listType) -> Just listType
+      -- Returns true if we have already seen this type definition.
+      alreadySeen = case (findElement seen (toS name)) of
+        Nothing -> isComposite name
+        (Just _) -> True
+      -- Returns true if the other type as a many relation to myself
+      containsManyMe (TypeDefinitionObject (ObjectTypeDefinition _ otherName _ _ otherFields)) =
+        any
+          ( \ (FieldDefinition _ fName _ fType _) -> case (fType) of
+                (TypeList _ (ListType (TypeNamed _ (NamedType innerName)))) -> innerName == name
+                otherwise -> False )
+          otherFields
+      containsManyMe _ = False
+      -- Creates the tables for the many to many relation
+      createTables other =
+        let
+          (TypeDefinitionObject (ObjectTypeDefinition _ otherName _ _ otherFields)) = other
+          combinedName = (toS name) ++ "_and_" ++ (toS otherName)
+          primaryKeys (FieldDefinition _ fieldName _ fieldType _) =
+            if (isPrimitive (typeToS fieldType))
+            then "\t" ++ (toS fieldName) ++ " "  ++ (primitiveToS $ typeToS fieldType) ++ " NOT NULL,\n"
+            else case (findElement table (typeToS fieldType)) of
+              Nothing -> skip
+              (Just (TypeDefinitionObject (ObjectTypeDefinition _ _ _ _ compFields))) ->
+                foldl
+                  (\ acc (FieldDefinition _ fName _ fType _) ->
+                    acc ++ "\t" ++ (toS fName) ++ " " ++ (primitiveToS $ typeToS fType) ++ " NOT NULL,\n" )
+                  ""
+                  compFields
+              otherwise -> skip
+          primaryKeyList b c = skip
+        in "\nCREATE TABLE " ++ combinedName ++ "(\n" ++
+           (primaryKeys (head fields)) ++
+           (primaryKeys (head otherFields)) ++
+           (primaryKeyList me other) ++ ");\n"
+      -- Adds the other type to the table of already visited types.
+      markAsSeen otherType alreadySeen =
+        let (TypeDefinitionObject (ObjectTypeDefinition _ otName _ _ _)) = otherType
+        in addElement alreadySeen (toS otName) otherType
+      -- Checks each field of this type for a many-to-many relation,
+      -- creating the many-to-many tables along the way.
+      result = if alreadySeen then (skip, seen) else
+        (foldr
+          (\ field (prevResult, prevSeen) -> let continue = (prevResult, prevSeen) in
+            case (checkField field) of
+              Nothing -> continue
+              (Just (ListType inner)) -> case (inner) of
+                (TypeList _ _) -> continue
+                (TypeNamed _ (NamedType tName)) -> case (findElement table (toS tName)) of
+                  Nothing -> continue
+                  (Just otherType) -> if (containsManyMe otherType)
+                    then ((createTables otherType) ++ prevResult, markAsSeen otherType prevSeen)
+                    else continue
+            )
+          ("", seen)
+          fields)
+  createManyToMany _ _ seen = (skip, seen)
+
   -- Retrieves the primary keys of the relationship
-  getRelationColumns :: GType -> SymbolTable TypeDefinition -> [Char]
+  getRelationColumns :: GType -> Visitor
   getRelationColumns (TypeNamed nullability (NamedType tName)) table = case (findElement table (toS tName)) of
     Nothing -> skip
     Just (TypeDefinitionObject (ObjectTypeDefinition _ name _ _ ((FieldDefinition _ fName _ fType _):t))) -> case (fType) of
       (TypeNamed _ theType) -> visitType (TypeNamed (Nullability True) theType) table
-      (TypeList _ theType) -> skip -- TODO: Many to X relationships.
+      (TypeList _ theType) -> skip
     Just _ -> skip
   getRelationColumns (TypeList nullability listType) table = skip
 
@@ -155,6 +239,16 @@ module SQLVisitor (sqlVisit) where
         (TypeList _ _) -> (toName skip)
   getFieldNames _ = skip
 
+  -- Converts a GQL primitive to a SQL primitive
+  primitiveToS :: [Char] -> [Char]
+  primitiveToS primitive = case primitive of
+    "Int" -> "INTEGER"
+    "Float" -> "REAL"
+    "String" -> "VARCHAR"
+    "Boolean" -> "BOOLEAN"
+    "ID" -> "VARCHAR"
+    otherwise -> skip
+
   -- Returns true if the named type is primitive, false otherwise
   isPrimitive :: [Char] -> Bool
   isPrimitive name = anyEq name ["Int", "Float", "String", "Boolean", "ID"]
@@ -163,6 +257,14 @@ module SQLVisitor (sqlVisit) where
   isComposite :: Name -> Bool
   isComposite name = endsWith (toS name) "_ID"
 
+  -- Returns true if the name is a user-defined name, false otherwise.
+  -- Excludes types representing composite keys.
+  isUserDefined :: Name -> VisitTable -> Bool
+  isUserDefined name table =
+    not (isPrimitive (toS name)) &&
+    not (isComposite name) &&
+    exists (findElement table (toS name))
+
   -- Default visitor which turns any input into the empty string (i.e. it "skips" visiting itself).
   skip :: [Char]
   skip = ""
@@ -170,6 +272,12 @@ module SQLVisitor (sqlVisit) where
   -- Prints the default value argument in the schema.
   sqlDefault :: [Char]
   sqlDefault = " DEFAULT "
+
+  -- Converts a Type to a Name
+  -- If the type is a list, get the inner name.
+  typeToName :: GType -> Name
+  typeToName (TypeNamed _ (NamedType name)) = name
+  typeToName (TypeList nullability (ListType innerType)) = typeToName innerType
 
   -- Converts a Type to a String
   typeToS :: GType -> [Char]

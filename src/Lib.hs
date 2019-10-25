@@ -1,5 +1,5 @@
 module Lib where
-    import Language.GraphQL.Draft.Syntax
+    import Language.GraphQL.Draft.Syntax (Name(..))
     import Data.Char (toLower)
     import Data.Text (pack, unpack)
 
@@ -47,3 +47,8 @@ module Lib where
     -- True if the string ends with the given input
     endsWith :: [Char] -> [Char] -> Bool
     endsWith str postfix = startsWith (reverse str) (reverse postfix)
+
+    -- Return true if the maybe exists, false otherwise
+    exists :: Maybe a -> Bool
+    exists Nothing = False
+    exists (Just a) = True
