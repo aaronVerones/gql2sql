@@ -13,4 +13,4 @@ CREATE TABLE ManyEntity(
   PRIMARY KEY (id)
 );
 
-ALTER TABLE ManyEntity ADD FOREIGN KEY (id) REFERENCES OneEntity(id);
+ALTER TABLE ManyEntity ADD FOREIGN KEY (oneConnection) REFERENCES OneEntity(id);

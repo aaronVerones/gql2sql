@@ -10,7 +10,9 @@ module SQLVisitor (sqlVisit) where
 
   -- Visits the Schema Document and converts it to SQL
   visitSchemaDocument :: SchemaDocument -> SymbolTable TypeDefinition -> [Char]
-  visitSchemaDocument (SchemaDocument typeDefs) table = visitAll (visitTypeDefinition) typeDefs table
+  visitSchemaDocument (SchemaDocument typeDefs) table =
+    visitAll (visitTypeDefinition) typeDefs table ++
+    visitAll (createForeignKey) typeDefs table ++ "\n"
 
   -- Visits the Type Definition and converts it to SQL
   visitTypeDefinition :: TypeDefinition -> SymbolTable TypeDefinition ->  [Char]
@@ -29,16 +31,18 @@ module SQLVisitor (sqlVisit) where
     | (fields == []) = skip
     | otherwise =
       "\nCREATE TABLE " ++ (toS name) ++ "(" ++
-      visitAll (visitFieldDefinition) fields table ++
-      (createPrimaryKey (head fields) table) ++
+      visitAll (visitFieldDefinition) fields table ++ primaryKeys ++
       "\n);\n"
+    where
+      primaryKeys = case (getPrimaryKey (head fields) table) of
+        Nothing -> skip
+        Just pk -> "\n\tPRIMARY KEY (" ++ pk ++ ")"
 
   -- Visits each field in a type declaration and generates it as a SQL column.
   visitFieldDefinition :: FieldDefinition -> SymbolTable TypeDefinition -> [Char]
   visitFieldDefinition (FieldDefinition _ name args (TypeNamed nullability (NamedType typeName)) _) table
-    | (isPrimitive strName) = "\n\t" ++ (toS name) ++ " " ++ (visitType fieldType table) ++ (visitAll (visitArgument) args table) ++ ","
     | (isComposite typeName) = (visitType fieldType table) ++ (visitAll (visitArgument) args table)
-    | otherwise = skip
+    | otherwise = "\n\t" ++ (toS name) ++ " " ++ (visitType fieldType table) ++ (visitAll (visitArgument) args table) ++ ","
     where
       fieldType = (TypeNamed nullability (NamedType typeName))
       strName = (toS typeName)
@@ -57,9 +61,9 @@ module SQLVisitor (sqlVisit) where
     -- TODO: Visit GQL User-Defined Type w/ Symbol Table
     otherwise -> if (isComposite name)
       then visitCompositeKey (TypeNamed nullable (NamedType name)) table
-      else skip
+      else getRelationColumns (TypeNamed nullable (NamedType name)) table
   -- TODO: Visit Lists of Primitives / User-Defined Types
-  visitType (TypeList (Nullability isNullable) (ListType innerType)) table = ""
+  visitType (TypeList (Nullability isNullable) (ListType innerType)) table = skip
 
   -- TODO: Composite Keys
   visitCompositeKey :: GType -> SymbolTable TypeDefinition -> [Char]
@@ -95,19 +99,60 @@ module SQLVisitor (sqlVisit) where
   visitAll :: (e -> SymbolTable TypeDefinition -> [Char]) -> [e] -> SymbolTable TypeDefinition -> [Char]
   visitAll visit lst table = foldr (\ e acc -> (visit e table) ++ acc) "" lst
 
-  -- Creates a Primary Key from the Field Definition
-  createPrimaryKey :: FieldDefinition -> SymbolTable TypeDefinition -> [Char]
-  createPrimaryKey (FieldDefinition _ name _ (TypeNamed _  (NamedType typeName)) _) table
-    | (isPrimitive (toS typeName)) = "\n\tPRIMARY KEY (" ++ (toS name) ++ ")"
+  -- Gets the Primary Key from a Field Definition
+  getPrimaryKey :: FieldDefinition -> SymbolTable TypeDefinition -> Maybe [Char]
+  getPrimaryKey (FieldDefinition _ name _ (TypeNamed _  (NamedType typeName)) _) table
+    | (isPrimitive (toS typeName)) = Just (toS name)
     | otherwise = case (findElement table (toS typeName)) of
-        Nothing -> skip
-        (Just typeDef) -> "\n\tPRIMARY KEY (" ++ (getFieldNames typeDef) ++ ")"
+        Nothing -> Nothing
+        (Just typeDef) -> Just (getFieldNames typeDef)
+  getPrimaryKey _ _ = Nothing
+
+  -- Creates a Foreign Key for the Type Defintion
+  createForeignKey :: TypeDefinition -> SymbolTable TypeDefinition -> [Char]
+  createForeignKey (TypeDefinitionObject (ObjectTypeDefinition _ name _ _ fields)) table =
+    join $ map (\ (fieldName, fieldType, fieldPK) ->
+      "\nALTER TABLE " ++ (toS name) ++
+      " ADD FOREIGN KEY (" ++ fieldName ++ ") REFERENCES " ++
+      fieldType ++ "(" ++ fieldPK ++ ");"
+    ) foreignFields
+    where
+      foreignFields = foldr
+        (\ field rest -> case () of
+          _ | (isPrimitive $ fType field) -> rest
+            | (isComposite $ (toName (fType field))) -> rest
+            | otherwise -> case (primaryKeys field) of
+                Nothing -> rest
+                Just keys -> ((fName field, fType field, keys):rest)
+        )
+        []
+        fields
+      primaryKeys fieldDef = getPrimaryKey fieldDef table
+      fType (FieldDefinition _ _ _ fieldType _) = (typeToS fieldType)
+      fName (FieldDefinition _ fName _ _ _) = (toS fName)
+  createForeignKey _ _ = skip
+
+  -- Retrieves the primary keys of the relationship
+  getRelationColumns :: GType -> SymbolTable TypeDefinition -> [Char]
+  getRelationColumns (TypeNamed nullability (NamedType tName)) table = case (findElement table (toS tName)) of
+    Nothing -> skip
+    Just (TypeDefinitionObject (ObjectTypeDefinition _ name _ _ ((FieldDefinition _ fName _ fType _):t))) -> case (fType) of
+      (TypeNamed _ theType) -> visitType (TypeNamed (Nullability True) theType) table
+      (TypeList _ theType) -> skip -- TODO: Many to X relationships.
+    Just _ -> skip
+  getRelationColumns (TypeList nullability listType) table = skip
 
   -- Gets the names of all fields declared in a type declaration comma separated.
   getFieldNames :: TypeDefinition -> [Char]
   getFieldNames (TypeDefinitionObject (ObjectTypeDefinition _ name _ _ fields))
     | (isComposite name) = foldr (\ (FieldDefinition _ fName _ _ _) acc -> (toS fName) ++ (if (acc == []) then "" else ", ") ++ acc) [] fields
+    | (isPrimitive (toS typeName)) = (toS firstName)
     | otherwise = skip
+    where
+      (FieldDefinition _ firstName _ firstType _) = (head fields)
+      typeName = case (firstType) of
+        (TypeNamed _ (NamedType tName)) -> tName
+        (TypeList _ _) -> (toName skip)
   getFieldNames _ = skip
 
   -- Returns true if the named type is primitive, false otherwise
@@ -125,3 +170,8 @@ module SQLVisitor (sqlVisit) where
   -- Prints the default value argument in the schema.
   sqlDefault :: [Char]
   sqlDefault = " DEFAULT "
+
+  -- Converts a Type to a String
+  typeToS :: GType -> [Char]
+  typeToS (TypeNamed nullability (NamedType name)) = toS name
+  typeToS (TypeList nullability (ListType innerType)) = "[" ++ (typeToS innerType) ++ "]"

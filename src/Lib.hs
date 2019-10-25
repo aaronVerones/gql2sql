@@ -25,9 +25,17 @@ module Lib where
     toS :: Name -> [Char]
     toS (Name text) = unpack text
 
+    -- Converts a String to a name
+    toName :: [Char] -> Name
+    toName str = (Name (pack str))
+
     -- Converts a string to its lowercase form
     toLowerCase :: [Char] -> [Char]
     toLowerCase str = map toLower str
+
+    -- Joins a list of strings into a single string
+    join :: [[Char]] -> [Char]
+    join strings = foldr (\ e acc -> e ++ acc) [] strings
 
     -- True if the string starts with the given input
     startsWith :: [Char] -> [Char] -> Bool
