@@ -2,6 +2,7 @@ module Main where
 
 import System.Environment
 import System.Exit
+import System.Directory
 import Lib
 import Language.GraphQL.Draft.Parser
 import Data.String
@@ -31,7 +32,9 @@ main = do
 codegen :: [Char] -> AST.SchemaDocument -> IO()
 codegen filePath ast = do
   let symbolTable = constructTable ast
-  writeFile (getOutputPath filePath "sql") (ast2sql ast symbolTable)
+  let outputDir = "output/"
+  createDirectoryIfMissing False outputDir
+  writeFile (getOutputPath filePath "sql" outputDir) (ast2sql ast symbolTable)
 
 -- Converts a GraphQL Graph to a SQL Graph
 ast2sql :: AST.SchemaDocument -> SymbolTable AST.TypeDefinition -> [Char]

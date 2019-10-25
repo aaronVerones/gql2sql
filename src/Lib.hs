@@ -13,8 +13,8 @@ module Lib where
     removeFileExtension file = foldr (\ e acc -> if (e == '.') then [] else (e:acc)) "" file
 
     -- Gets the output path to the input file name, adding the given extension.
-    getOutputPath :: [Char] -> [Char] -> [Char]
-    getOutputPath inputPath extension = "output/" ++ (removeFileExtension $ fileNameFromPath inputPath) ++ ('.':extension)
+    getOutputPath :: [Char] -> [Char] -> [Char] -> [Char]
+    getOutputPath inputPath extension outputDir = outputDir ++ (removeFileExtension $ fileNameFromPath inputPath) ++ ('.':extension)
 
     -- Returns true if the input is equal to any in the list.
     anyEq :: Eq e => e -> [e] -> Bool

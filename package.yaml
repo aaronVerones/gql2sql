@@ -22,6 +22,7 @@ dependencies:
 - base >= 4.7 && < 5
 - graphql-parser
 - text
+- directory
 
 library:
   source-dirs: src
