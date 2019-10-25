@@ -36,6 +36,7 @@ stack test
 - Example schemas can be found in test/resources/gql
 - [Dope GQL stuff](https://raw.githubusercontent.com/sogko/graphql-shorthand-notation-cheat-sheet/master/graphql-shorthand-notation-cheat-sheet.png)
 
-# TODO
-1. Complete the function `Main.hs: ast2sql`
-2. Complete the function `Main.hs: ast2dot`
+## Note
+- There are some bugs with the code gen, but this is only
+  visit when generating the schema.graphql file.
+- All other files successfully codegen.

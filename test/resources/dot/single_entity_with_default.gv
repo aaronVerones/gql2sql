@@ -1,7 +1,0 @@
-digraph G {
-  MyEntity[shape="square"]
-  id[label=< <u>id</u> >]
-  MyEntity -> id
-  MyEntity -> name
-  MyEntity -> isActive
-}
